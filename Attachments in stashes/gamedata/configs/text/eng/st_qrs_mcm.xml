@@ -8,10 +8,10 @@
     </string>
     
     <string id="ui_mcm_qrs_trader_t1">
-        <text>Allow Traders to sell T1 Attachments</text>
+        <text>Allow Traders to sell T1 Attachments and gun kits</text>
     </string>
     <string id="ui_mcm_qrs_trader_t1_desc">
-        <text>If enabled, traders will be able to sell Tier 1 attachments (like Kobra sights, PBS silencers, etc.). Higher tier attachments are always banned. \n \nNOTE: If you toggle this setting mid-game, you must wait for traders to restock (usually 24-48 in-game hours) before the new items appear.</text>
+        <text>If enabled, traders will be able to sell Tier 1 attachments and basic gun kits (like Kobra sights, PBS silencers, etc.). Higher tier attachments are always banned. \n \nNOTE: If you toggle this setting mid-game, you must wait for traders to restock (usually 24-48 in-game hours) before the new items appear.</text>
     </string>
 
     <string id="ui_mcm_qrs_replace_quest_stash">
