@@ -1,4 +1,4 @@
-# Attachments in Stashes Mod v1.3.1
+# Attachments in Stashes Mod v1.4.0
 ### S.T.A.L.K.E.R. GAMMA / Anomaly addon
 
 ---
@@ -17,7 +17,11 @@
 
 ### 2. Dark Blue Reward Stash - every 10-12 quests
 - Every **10-12 completed quests**, a **dark blue marker** appears on the map — a special stash.
-- The stash contents depend on the **current map tier**:
+- **Guaranteed to contain**:
+  - Exactly **3 Scopes** and **2 Silencers**
+  - Items are guaranteed to be unique (no duplicates in the same stash).
+  - Has an 80% chance to spawn upon reaching the threshold. If it fails, it will roll the 80% chance again on every subsequent quest completion until it succeeds.
+- The stash attachment tiers depend on the **current map tier**:
 
 | Map | Tier | Attachment Quality |
 |-----|------|--------------------|
@@ -25,20 +29,17 @@
 | Rostok, Agroprom, Truck Cemetery, Dead City, Army Warehouses, Radar | 2-3 | Medium (ACOG, PSO, etc.) |
 | Yantar, Jupiter, Red Forest, Zaton, Pripyat and others | 3-5 | High-End (RMR, Aimpoint, Marchf, etc.) |
 
-- Each stash will contain **scopes, silencers, and a chance for weapon/outfit upgrades**.
-- Has an 80% chance to spawn upon reaching the threshold. If it fails, it will roll the 80% chance again on every subsequent quest completion until it succeeds.
-
 ---
 
 ### 3. Light Blue Rare Stash - every 20-25 quests
 - Every **20-25 completed quests**, a **light blue stash** appears instead.
 - **Guaranteed to contain**:
+  - Exactly **4 Scopes** and **3 Silencers** (all unique, no duplicates)
+  - **100% chance** for a Grenade Launcher if the map is Tier 3 or above (Radar, Red Forest, Pripyat, etc.)
   - A Tactical/Combo Gun Kit (e.g., BaS kits)
   - A Weapon Upgrade Part
   - An Armor Upgrade Part
-  - A Toolkit cycle (Drug kit -> Ammo kit -> Basic/Advanced/Expert toolkit depending on map tier)
-  - Multiple scopes and silencers.
-- This provides an alternative progression path for upgrades without relying on traders.
+  - A progressive Toolkit cycle: `Drug Making Kit` -> `Gunsmithing Tools` -> `Basic/Advanced/Expert Toolkits`. The cycle never resets. It will dynamically skip the first two stages if you already have the Drug Kit or Gunsmithing Tools in your inventory!
 
 ---
 
@@ -75,6 +76,13 @@
 ---
 
 ## Changelog
+
+### 1.4.0
+- **ECONOMY OVERHAUL**: Reduced the base cost (selling price) of all mid-to-high tier scopes, silencers, and kits by exactly 4x. This prevents the player from becoming unreasonably wealthy from selling stash loot in the mid-to-late game. The low-tier (T1) items sold by specific traders retain their original prices.
+- **BALANCED**: Dark Blue Stashes now drop exactly 3 scopes and 2 silencers. Light Blue Stashes drop 4 scopes and 3 silencers.
+- **BALANCED**: Implemented item uniqueness check inside stash generation so you never receive duplicate attachments in the same stash box.
+- **NEW**: Light Blue Stashes now have a 100% drop rate for Grenade Launchers, provided the stash spawns in a Tier 3 or higher zone. Dark Blue stashes no longer drop Grenade Launchers at all. Grenade launchers are also now distributed down to Tier 3 zones.
+- **NEW**: The Light Blue Stash toolkit cycle has been massively improved for logic and quality of life. It progresses: `Drug Making Kit -> Gunsmithing Tools -> Toolkits (Forever)`. It also checks the player's inventory on stash generation; if the player already holds a Drug Making Kit or Gunsmithing Tools, it skips that cycle step automatically.
 
 ### 1.3.1 
 - **IMPROVED**: Switched trader filtering from a blacklist to a Strict Whitelist system. Only explicitly listed main faction quartermasters (e.g., Sidorovich, Petrenko, Dushman, etc.) are allowed to have and sell attachments and upgrade kits. This permanently fixes issues with dynamic/generic traders (Bandits, Medics, Mechanics, Forester, Spirit, etc.) bypassing the filter.
