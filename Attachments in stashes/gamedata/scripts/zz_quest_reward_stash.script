@@ -16,7 +16,7 @@
 ================================================================================
 --]]
 
-local QRS_VERSION = "1.3.1"
+local QRS_VERSION = "1.4.0"
 
 -- ============================================================================
 -- NUSTATYMŲ KONFIGŪRACIJA (settings) (Naudoja MCM jei įdiegta) (if MCM present)
@@ -127,8 +127,8 @@ local BAS_KITS_BY_TIER = {
 local GRENADE_LAUNCHERS_BY_TIER = {
     [1] = {},
     [2] = {},
-    [3] = {},
-    [4] = {"wpn_addon_grenade_launcher", "wpn_addon_grenade_launcher_m203", "wpn_addon_grenade_launcher_l85", "wpn_addon_grenade_launcher_scar"},
+    [3] = {"wpn_addon_grenade_launcher", "wpn_addon_grenade_launcher_m203", "wpn_addon_grenade_launcher_l85", "wpn_addon_grenade_launcher_scar"},
+    [4] = {"wpn_addon_grenade_launcher_l85", "wpn_addon_grenade_launcher_scar", "wpn_addon_grenade_launcher_monolit"},
     [5] = {"wpn_addon_grenade_launcher_l85", "wpn_addon_grenade_launcher_scar", "wpn_addon_grenade_launcher_monolit"},
 }
 
@@ -189,41 +189,71 @@ end
 local function build_attachment_content(is_kit_stash)
     local map = get_current_map()
     local content = {}
+    local selected_sections = {}
+
+    local function add_unique_item(pool)
+        if not pool or #pool == 0 then return end
+        
+        -- Bandome rasti unikalų
+        local valid_choices = {}
+        for i = 1, #pool do
+            if not selected_sections[pool[i]] then
+                valid_choices[#valid_choices+1] = pool[i]
+            end
+        end
+        
+        local item = nil
+        if #valid_choices > 0 then
+            item = valid_choices[math.random(#valid_choices)]
+        else
+            item = pool[math.random(#pool)]
+        end
+        
+        if item and section_exists(item) then
+            content[#content+1] = item
+            selected_sections[item] = true
+        end
+    end
 
     if is_kit_stash then
         -- ====================================================
         -- ŠVIESIAI MĖLYNAS stash (35-40 questų): (light blue stash)
-        --   2-3 scope'ai + 2-3 silencer'iai (2-3 scopres, 2-3 silencers)
-        --   50% šansas gauti granatomėtą (50% chance grenade launcher)
+        --   4 scope'ai + 3 silencer'iai (4 scopes, 3 silencers)
+        --   100% šansas gauti granatomėtą iš tier 4 (100% chance grenade launcher from tier 4)
         --   100% šansas: Cikliškas pagrindinis kit'as (Drug -> Ammo -> Tools) (100% for basic/expert/advanced kit or drug making/ gunsmith)
         --   1 armor'o upgrade (visada) (armor upgrade kit)
         -- ====================================================
-        local num_scopes = math.random(2, 3)
+        local num_scopes = 4
         for i = 1, num_scopes do
             local tier = pick_random_tier(map)
-            local item = random_from_table(SCOPES_BY_TIER[tier] or SCOPES_BY_TIER[1])
-            if item and section_exists(item) then content[#content+1] = item end
+            add_unique_item(SCOPES_BY_TIER[tier] or SCOPES_BY_TIER[1])
         end
 
-        local num_sil = math.random(2, 3)
+        local num_sil = 3
         for i = 1, num_sil do
             local tier = pick_random_tier(map)
-            local item = random_from_table(SILENCERS_BY_TIER[tier] or SILENCERS_BY_TIER[1])
-            if item and section_exists(item) then content[#content+1] = item end
+            add_unique_item(SILENCERS_BY_TIER[tier] or SILENCERS_BY_TIER[1])
         end
 
-        -- 50% šansas granatomėtui (50% grenade launcher chance)
-        if math.random(100) <= 50 then
-            local tier_gl = pick_random_tier(map)
-            local gl_pool = GRENADE_LAUNCHERS_BY_TIER[tier_gl] or GRENADE_LAUNCHERS_BY_TIER[4]
-            local gl_item = random_from_table(gl_pool)
-            if gl_item and section_exists(gl_item) then content[#content+1] = gl_item end
-        end
-
+        -- 100% šansas granatomėtui, jei tier >= 3 (1 ir 2 tier GL sąrašai tušti)
+        -- 100% chance for a grenade launcher, if tier >= 3 (tier 1 and 2 GL lists are empty)
+        local tier_gl = pick_random_tier(map)
+        local gl_pool = GRENADE_LAUNCHERS_BY_TIER[tier_gl]
+        local gl_item = random_from_table(gl_pool)
+        if gl_item and section_exists(gl_item) then content[#content+1] = gl_item end
 
         local kit_cycle = load_var(db.actor, "qrs_kit_cycle") or 1
-        local kit = nil
         
+        -- Jeigu žaidėjas jau turi inventoriuje, peršokame į kitą lygį
+        -- If a player has it in his inventory, skip to the next level
+        if kit_cycle == 1 and db.actor:object("itm_drugkit") then
+            kit_cycle = 2
+        end
+        if kit_cycle == 2 and db.actor:object("itm_ammokit") then
+            kit_cycle = 3
+        end
+
+        local kit = nil
         if kit_cycle == 1 then
             kit = "itm_drugkit"
         elseif kit_cycle == 2 then
@@ -236,9 +266,12 @@ local function build_attachment_content(is_kit_stash)
         if kit and section_exists(kit) then 
             content[#content+1] = kit 
             
-            kit_cycle = kit_cycle + 1
-            if kit_cycle > 3 then kit_cycle = 1 end
-            save_var(db.actor, "qrs_kit_cycle", kit_cycle)
+            -- Didiname ciklą tik iki tol, kol pasiekiame 3 (daugiau neresetiname)
+            -- kit_cycle: 1 -> 2 -> 3
+            if kit_cycle < 3 then
+                kit_cycle = kit_cycle + 1
+                save_var(db.actor, "qrs_kit_cycle", kit_cycle)
+            end
         end
 
         local tier_o = pick_random_tier(map)
@@ -256,29 +289,19 @@ local function build_attachment_content(is_kit_stash)
     else
         -- ====================================================
         -- TAMSIAI MĖLYNAS stash (12-15 questų): (Dark blue stash 12-15 quests)
-        --   1-3 scope'ai + 1-2 silencer'iai (pagal tier) (1-3 scopes and 1-2 silencers depending on the tier)
-        --   50% šansas granatomėtui (50% grenade launcher chance)
+        --   3 scope'ai + 2 silencer'iai (3 scopes and 2 silencers)
+        --   Be granatomėto (No grenade launcher)
         -- ====================================================
-        local num_scopes = math.random(1, 3)
+        local num_scopes = 3
         for i = 1, num_scopes do
             local tier = pick_random_tier(map)
-            local item = random_from_table(SCOPES_BY_TIER[tier] or SCOPES_BY_TIER[1])
-            if item and section_exists(item) then content[#content+1] = item end
+            add_unique_item(SCOPES_BY_TIER[tier] or SCOPES_BY_TIER[1])
         end
 
-        local num_sil = math.random(1, 2)
+        local num_sil = 2
         for i = 1, num_sil do
             local tier = pick_random_tier(map)
-            local item = random_from_table(SILENCERS_BY_TIER[tier] or SILENCERS_BY_TIER[1])
-            if item and section_exists(item) then content[#content+1] = item end
-        end
-
-        -- 50% šansas granatomėtui (50% grenade launcher chance)
-        if math.random(100) <= 50 then
-            local tier_gl = pick_random_tier(map)
-            local gl_pool = GRENADE_LAUNCHERS_BY_TIER[tier_gl] or GRENADE_LAUNCHERS_BY_TIER[4]
-            local gl_item = random_from_table(gl_pool)
-            if gl_item and section_exists(gl_item) then content[#content+1] = gl_item end
+            add_unique_item(SILENCERS_BY_TIER[tier] or SILENCERS_BY_TIER[1])
         end
 
         if math.random(100) <= 50 then
