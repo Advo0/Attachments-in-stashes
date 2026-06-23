@@ -1,4 +1,4 @@
-# Attachments in Stashes Mod v1.3.0
+# Attachments in Stashes Mod v1.3.1
 ### S.T.A.L.K.E.R. GAMMA / Anomaly addon
 
 ---
@@ -76,7 +76,12 @@
 
 ## Changelog
 
-### 1.3.0 (2026-06-23)
+### 1.3.1 
+- **IMPROVED**: Switched trader filtering from a blacklist to a Strict Whitelist system. Only explicitly listed main faction quartermasters (e.g., Sidorovich, Petrenko, Dushman, etc.) are allowed to have and sell attachments and upgrade kits. This permanently fixes issues with dynamic/generic traders (Bandits, Medics, Mechanics, Forester, Spirit, etc.) bypassing the filter.
+- **IMPROVED**: Added dynamic duplicate cleaning in `clean_trader_inventory`. If a valid trader somehow receives multiple copies of the exact same injected attachment, the script instantly deletes the duplicates upon opening the UI.
+- **FIXED**: Ecologists are now explicitly completely banned from having any scopes, silencers, or kits.
+
+### 1.3.0 
 - **NEW**: Faction-specific T1 weapon upgrade kits injection! Now when T1 attachments are allowed at traders, they will also sell basic pistol/gun kits depending on their faction (e.g. Duty gets PM, PB, PL-15, SR1MP kits; Mercenaries get Mod9, M9, Tikka kits).
 
 ### v1.2.2
