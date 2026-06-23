@@ -1,0 +1,59 @@
+-- modmxl_quest_reward_start.script
+-- DXML patch: prideda du "quest_reward_stash" map spot tipus į map_spots.xml, bet neperrašant viso failo (Map spots into map_spots.xml file without override)
+-- quest_reward_stash      = TAMSIAI MĖLYNAS (Dark Blue) (attachment stash, kas 12-15 questų) (TL:DR every 12-15 quests)
+-- quest_reward_stash_rare = ŠVIESIAI MĖLYNAS (Light Blue) (kit stash, kas 35-40 questų) (TL:DR every 35-40 quests)
+
+local SPOT_XML = [[
+    <!-- QRS: Attachment stash - TAMSIAI MĖLYNAS (Dark Blue) -->
+    <quest_reward_stash hint="st_ui_pda_secret">
+        <level_map spot="quest_reward_stash_spot" pointer="quest_pointer" />
+        <mini_map spot="quest_reward_stash_mini" />
+    </quest_reward_stash>
+
+    <quest_reward_stash_spot width="12" height="12" alignment="c" stretch="1" scale="1" scale_min="1" scale_max="1.5">
+        <texture r="30" g="80" b="200">ui_inGame2_PDA_icon_secret</texture>
+    </quest_reward_stash_spot>
+
+    <quest_reward_stash_mini width="8" height="8" alignment="c" stretch="1">
+        <texture r="30" g="80" b="200">ui_inGame2_PDA_icon_secret</texture>
+    </quest_reward_stash_mini>
+
+    <!-- QRS: Kit stash - ŠVIESIAI MĖLYNAS (Light Blue) -->
+    <quest_reward_stash_rare hint="st_ui_pda_secret">
+        <level_map spot="quest_reward_stash_rare_spot" pointer="quest_pointer" />
+        <mini_map spot="quest_reward_stash_rare_mini" />
+    </quest_reward_stash_rare>
+
+    <quest_reward_stash_rare_spot width="14" height="14" alignment="c" stretch="1" scale="1" scale_min="1" scale_max="1.5">
+        <texture r="120" g="200" b="255">ui_inGame2_PDA_icon_secret</texture>
+    </quest_reward_stash_rare_spot>
+
+    <quest_reward_stash_rare_mini width="9" height="9" alignment="c" stretch="1">
+        <texture r="120" g="200" b="255">ui_inGame2_PDA_icon_secret</texture>
+    </quest_reward_stash_rare_mini>
+]]
+
+local TARGET_FILES = {
+    [ [[ui\maps\map_spots.xml]] ]    = true,
+    [ [[ui\maps\map_spots_16.xml]] ] = true,
+    [ [[ui\map_spots.xml]] ]         = true,
+    [ [[ui\map_spots_16.xml]] ]      = true,
+}
+
+local function on_xml_read(xml_file_name, xml_obj)
+    if not TARGET_FILES[xml_file_name] then return end
+
+    -- Injecting if its not there
+    if is_not_empty(xml_obj:query("quest_reward_stash")) then return end
+
+    xml_obj:insertFromXMLString(SPOT_XML)
+    printf("[QRS-XML] quest_reward_stash spots injected into %s", xml_file_name)
+end
+
+function on_game_start()
+    RegisterScriptCallback("on_xml_read", on_xml_read)
+end
+
+function on_game_end()
+    UnregisterScriptCallback("on_xml_read", on_xml_read)
+end

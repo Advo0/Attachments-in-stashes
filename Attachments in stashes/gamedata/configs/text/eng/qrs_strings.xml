@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<string_table>
+
+    <!-- Stash pavadinimai ir aprašymai -->
+    <string id="st_qrs_stash_name">
+        <text>&#91;REWARD&#93; Attachment Cache</text>
+    </string>
+    <string id="st_qrs_stash_descr">
+        <text>A hidden stash discovered as a reward for completing zone tasks. Contains weapon attachments and upgrade kits.</text>
+    </string>
+    <string id="st_qrs_kit_stash_name">
+        <text>&#91;REWARD&#93; Rare Supply Cache</text>
+    </string>
+    <string id="st_qrs_kit_stash_descr">
+        <text>A rare hidden stash rewarded for persistence in the Zone. Contains rare kits and high-quality attachments.</text>
+    </string>
+    
+    <!-- Užuomina žemėlapyje -->
+    <string id="st_qrs_stash_hint">
+        <text>Quest Reward Cache - Contains weapon attachments and upgrade kits</text>
+    </string>
+    
+    <!-- Pranešimai žaidėjui -->
+    <string id="st_qrs_attach_found">
+        <text>~Your persistence in the Zone has been rewarded. A cache with weapon attachments has appeared on your PDA map, marked in blue.</text>
+    </string>
+    <string id="st_qrs_kit_found">
+        <text>~Word spreads of your achievements in the Zone. A rare supply cache has appeared on your PDA map, marked in blue. It contains kits and premium attachments.</text>
+    </string>
+    <string id="st_qrs_no_stash">
+        <text>~Quest reward pending. No suitable location found for the cache nearby.</text>
+    </string>
+
+</string_table>

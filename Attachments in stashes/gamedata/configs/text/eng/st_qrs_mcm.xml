@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="windows-1251" ?>
+<string_table>
+    <string id="ui_mcm_qrs_title">
+        <text>Attachments in Stashes</text>
+    </string>
+    <string id="ui_mcm_menu_qrs">
+        <text>Attachments in Stashes</text>
+    </string>
+    
+    <string id="ui_mcm_qrs_trader_t1">
+        <text>Allow Traders to sell T1 Attachments</text>
+    </string>
+    <string id="ui_mcm_qrs_trader_t1_desc">
+        <text>If enabled, traders will be able to sell Tier 1 attachments (like Kobra sights, PBS silencers, etc.). Higher tier attachments are always banned. \n \nNOTE: If you toggle this setting mid-game, you must wait for traders to restock (usually 24-48 in-game hours) before the new items appear.</text>
+    </string>
+
+    <string id="ui_mcm_qrs_replace_quest_stash">
+        <text>Replace Default Quest Stash</text>
+    </string>
+    <string id="ui_mcm_qrs_replace_quest_stash_desc">
+        <text>If enabled, whenever a blue stash is triggered from completing a quest, it will block the default (white/yellow) stash from spawning for that specific quest completion to prevent double stashes.</text>
+    </string>
+
+    <string id="ui_mcm_qrs_desc_attach">
+        <text>--- DARK BLUE STASH (Attachments + White stash loot) ---</text>
+    </string>
+    <string id="ui_mcm_qrs_attach_min">
+        <text>Dark Blue Stash: Min Quests</text>
+    </string>
+    <string id="ui_mcm_qrs_attach_min_desc">
+        <text>Minimum number of quests required to trigger the Dark Blue (attachments) stash.</text>
+    </string>
+
+    <string id="ui_mcm_qrs_attach_max">
+        <text>Dark Blue Stash: Max Quests</text>
+    </string>
+    <string id="ui_mcm_qrs_attach_max_desc">
+        <text>Maximum number of quests required to trigger the Dark Blue (attachments) stash.</text>
+    </string>
+
+    <string id="ui_mcm_qrs_desc_kit">
+        <text>--- LIGHT BLUE STASH (Toolkits + Attachments) ---</text>
+    </string>
+    <string id="ui_mcm_qrs_kit_min">
+        <text>Light Blue Stash: Min Quests</text>
+    </string>
+    <string id="ui_mcm_qrs_kit_min_desc">
+        <text>Minimum number of quests required to trigger the Light Blue (kits + attachments) stash.</text>
+    </string>
+
+    <string id="ui_mcm_qrs_kit_max">
+        <text>Light Blue Stash: Max Quests</text>
+    </string>
+    <string id="ui_mcm_qrs_kit_max_desc">
+        <text>Maximum number of quests required to trigger the Light Blue (kits + attachments) stash.</text>
+    </string>
+</string_table>

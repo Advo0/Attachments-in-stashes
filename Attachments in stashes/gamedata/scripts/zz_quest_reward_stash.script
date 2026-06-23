@@ -1,0 +1,931 @@
+--[[
+================================================================================
+  Attachments in stashes Mod (zz_quest_reward_stash)
+
+  Funkcionalumas:
+  1. Traderiai NEBEPARDUODA attachment'ų (scope, silencer, weapon/armor upgr-kit'ai) (Traders dont sell attachments)
+  2. Kas 10-12 questų atsiranda TAMSIAI MĖLYNAS stash'as ("quest_reward_stash") (every 10-12 quests, a dark blue stash appears)
+     - Turinys: attachment'ai (loot kaip baltas stash) (contains white stash loot + attachments)
+  3. Kas 20-25 questų atsiranda ŠVIESIAI MĖLYNAS stash'as ("quest_reward_stash_rare") (every 20-25 quest, a light blue stash appears)
+     - Turinys: attachment'ai + kit'as (+ tool kit) (contains white stash loot + gun kit + attachments + tool kit)
+  4. Attachment'ų kokybė priklauso nuo žemėlapio tier'o (Attachments depend on map)
+  5. Žemėlapio tier'ai: (map tiers)
+      PRASTI  (tier 1-2): cordon, great_swamps, garbage, darkvalley, darkscape, meadows (Bad tier 1-2)
+      VIDUTINIAI (tier 2-3): rostok, agroprom, truck_cemetery, deadcity, army warehouses, radar (Medium tier 2-3)
+      GERIAUSI  (tier 3-5): visi kiti (yantar, jupiter, red forest, pripyat, ir kt.) (Best tier 3-5)
+================================================================================
+--]]
+
+local QRS_VERSION = "1.2.2"
+
+-- ============================================================================
+-- NUSTATYMŲ KONFIGŪRACIJA (settings) (Naudoja MCM jei įdiegta) (if MCM present)
+-- ============================================================================
+local function get_config(key, default)
+    if ui_mcm then
+        local val = ui_mcm.get("qrs/" .. key)
+        if val ~= nil then return val end
+    end
+    return default
+end
+
+local function get_quests_attach_min() return get_config("attach_min", 10) end
+local function get_quests_attach_max() return get_config("attach_max", 12) end
+local function get_quests_kit_min()    return get_config("kit_min", 20) end
+local function get_quests_kit_max()    return get_config("kit_max", 25) end
+local function get_allow_t1_trader()   return get_config("trader_t1", false) end
+local function get_replace_quest_stash() return get_config("replace_quest_stash", true) end
+
+_G.QRS_BLOCK_NEXT_STASH = false
+
+-- ============================================================================
+-- ŽEMĖLAPIŲ TIER'AI (map tier)
+-- tier 1 = prasčiausi, tier 5 = geriausi (tier 1 poopoo, tier 5 - good)
+-- pool = galimų tier'ų sąrašas (pasikartojimas = didesnis šansas) (tier list, if happens again higher chance)
+-- ============================================================================
+local MAP_TIERS = {
+    -- PRASTI ŽEMĖLAPIAI (tier 1-2 daugiausia) (poopo maps tier 1-2)
+    ["l01_escape"]          = {pool = {1,1,2,2,2}},           -- Cordon
+    ["k00_marsh"]           = {pool = {1,1,2,2,2}},           -- Great Swamps
+    ["l02_garbage"]         = {pool = {1,1,2,2,2,3}},         -- Garbage
+    ["l04_darkvalley"]      = {pool = {1,1,2,2,2,3}},         -- Dark Valley
+    ["k01_darkscape"]       = {pool = {1,1,2,2,2,3}},         -- Darkscape
+    ["y04_pole"]            = {pool = {1,1,2,2,2}},           -- Meadows
+
+    -- VIDUTINIAI ŽEMĖLAPIAI (tier 2-3 daugiausia) (medium maps tier 2-3)
+    ["l06_rostok"]          = {pool = {2,2,2,3,3}},           -- Rostok / Bar
+    ["l05_bar"]             = {pool = {2,2,2,3,3}},           -- Bar (Rostok area)
+    ["l03_agroprom"]        = {pool = {2,2,3,3}},             -- Agroprom
+    ["k02_trucks_cemetery"] = {pool = {2,2,3,3,3}},           -- Truck Cemetery
+    ["l09_deadcity"]        = {pool = {2,2,2,3,3,3}},         -- Dead City
+    ["l07_military"]        = {pool = {2,2,3,3,3,4}},         -- Army Warehouses
+    ["l10_radar"]           = {pool = {2,3,3,3,4,4}},         -- Radar
+
+    -- GERIAUSI ŽEMĖLAPIAI (tier 3-5 daugiausia) (high tier maps 3-5)
+    ["l08_yantar"]          = {pool = {3,3,4,4}},             -- Yantar
+    ["l10_limansk"]         = {pool = {3,3,4,4,5}},           -- Limansk
+    ["l10_red_forest"]      = {pool = {3,3,4,4,5,5}},         -- Red Forest
+    ["jupiter"]             = {pool = {3,3,4,4,4}},           -- Jupiter
+    ["zaton"]               = {pool = {3,4,4,4,5}},           -- Zaton
+    ["l12_stancia"]         = {pool = {3,4,4,4,5}},           -- CNPP 1
+    ["l12_stancia_2"]       = {pool = {4,4,5,5}},             -- CNPP 2
+    ["l11_hospital"]        = {pool = {4,4,5,5}},             -- Hospital
+    ["l11_pripyat"]         = {pool = {3,4,4,5,5,5}},         -- Pripyat
+    ["l13_generators"]      = {pool = {4,5,5,5,5}},           -- Generators
+    ["l08u_brainlab"]       = {pool = {4,4,5,5,5}},           -- Brain Lab
+    ["l04u_labx18"]         = {pool = {4,5,5,5}},             -- Lab X-18
+    ["l03u_agr_underground"]= {pool = {3,4,4,5,5}},           -- Agroprom Underground
+    ["jupiter_underground"] = {pool = {4,4,5,5,5}},           -- Jupiter Underground
+    ["l10u_bunker"]         = {pool = {4,5,5,5}},             -- Bunker
+    ["l12u_sarcofag"]       = {pool = {4,5,5,5,5}},           -- Sarcophagus
+    ["l12u_control_monolith"]={pool = {4,5,5,5,5}},           -- Monolith Control
+    ["l13u_warlab"]         = {pool = {4,5,5,5,5}},           -- War Lab
+    ["labx8"]               = {pool = {3,4,5,5}},             -- Lab X8
+    ["pripyat"]             = {pool = {4,5,5,5,5}},           -- Pripyat (Outskirts)
+}
+
+local DEFAULT_MAP_POOL = {2, 3, 3}
+
+-- ============================================================================
+-- ATTACHMENT LENTELĖS PAGAL TIER'Ą (attachments table depending on tier)
+-- ============================================================================
+local SCOPES_BY_TIER = {
+    [1] = {"0kp2", "okp", "kobra", "pka", "pso2", "1p29", "ps01", "ac10632", "1p76", "1p78gs", "wpn_addon_scope_pu", "1p63", "pk6", "p1x42"},
+    [2] = {"rakurs", "ekp8_02", "ekp8_18", "usp1", "pso1m21", "wpn_addon_scope_po4x34"},
+    [3] = {"c-more", "eot", "compm4s", "pgo7gs", "1pn93", "kp_sr2"},
+    [4] = {"e0t2", "mepro", "kemper", "leupold", "specter", "acog", "susat", "kashtan_rmr", "pn23", "1pn93n2_1gs", "1p59", "c79", "hco", "lco1", "ps320", "echo1", "he510", "romeo4", "tac30"},
+    [5] = {"rmr", "deltapoint", "d0cter", "aim_low", "aimpoint", "gauss_sight", "mark8_rmr", "spec_alt", "marchf", "march_f_shorty", "t12", "triji", "uh2", "razorhd"},
+}
+
+local SILENCERS_BY_TIER = {
+    [1] = {"wpn_sil_pmm", "wpn_sil_kek12", "wpn_sil_9mm", "wpn_sil_sr1m", "wpn_sil_aps", "wpn_sil_apb", "wpn_sil_6p9", "wpn_sil_pbs1"},
+    [2] = {"wpn_sil_osp9", "wpn_sil_geks545", "wpn_sil_tgpv", "wpn_sil_9a91", "wpn_sil_atg", "wpn_sil_pbs4", "wpn_sil_45", "wpn_sil_57"},
+    [3] = {"wpn_sil_salvo", "wpn_sil_aac762", "wpn_sil_black_box", "wpn_sil_pl15", "wpn_sil_tgp-a", "wpn_sil_veresk", "wpn_sil_vihr", "wpn_sil_ash12", "wpn_sil_nato", "wpn_sil_gemtech"},
+    [4] = {"wpn_sil_hexagon", "wpn_sil_kzrzp", "wpn_sil_auga", "wpn_sil_daniel", "wpn_sil_m42k", "wpn_sil_surfire"},
+    [5] = {"wpn_sil_hex23", "wpn_sil_rotor", "wpn_sil_osprey", "wpn_sil_forester", "wpn_sil_kac4", "wpn_sil_lapu7", "wpn_sil_spec_isg", "wpn_sil_sr25"},
+}
+
+local UPGR_WEAPON_BY_TIER = {
+    [1] = {"upgr_w_1_recoil", "upgr_w_1_dispersion", "upgr_w_1_reliability", "upgr_w_1_weight"},
+    [2] = {"upgr_w_1_scope", "upgr_w_1_magazine", "upgr_w_1_muffle", "upgr_w_1_speed", "upgr_w_1_rpm"},
+    [3] = {"upgr_w_2_recoil", "upgr_w_2_dispersion", "upgr_w_2_reliability", "upgr_w_2_magazine"},
+    [4] = {"upgr_w_2_scope", "upgr_w_2_muffle", "upgr_w_3_recoil", "upgr_w_3_dispersion"},
+    [5] = {"upgr_w_3_scope", "upgr_w_3_muffle", "upgr_w_3_magazine", "upgr_w_3_rpm", "upgr_w_3_reliability"},
+}
+
+-- Tactical ir Combo kit'ai ginklams (Gun kits from other mods boomsticks and etc..)
+local BAS_KITS_BY_TIER = {
+    [1] = {"sr1upgr1", "lazup_pl15", "pl15_scolaz", "gurza_up", "apsabigo", "mod9", "ots2_upgr_kit", "pb_upgr_kit", "pm_upgr_kit", "tt_upgr_kit"},
+    [2] = {"sr2_upkit", "kab_up", "226sig_kit", "u2p2g0r", "upg220", "m9_upgr_kit", "mauser_kit"},
+    [3] = {"23_up", "swamp", "5c_tik", "shakal", "vitup"},
+    [4] = {"mono_kit", "kit_aus_tri", "kit_fal_leup", "archangel", "infiltrator_tactical_kit", "admin", "bd", "kurtz", "vorkuta", "sup"},
+    [5] = {"kit_sa5x_spec", "magpul_pro", "mod_x_gen3", "lapua700", "silen98", "spectre_tactical_kit"},
+}
+
+-- Granatomėtai pagal tier'ą (Grenade launchers by tier)
+-- 50% šansas gauti su kiekvienu stash'u (50% chance to appear)
+local GRENADE_LAUNCHERS_BY_TIER = {
+    [1] = {},
+    [2] = {},
+    [3] = {},
+    [4] = {"wpn_addon_grenade_launcher", "wpn_addon_grenade_launcher_m203", "wpn_addon_grenade_launcher_l85", "wpn_addon_grenade_launcher_scar"},
+    [5] = {"wpn_addon_grenade_launcher_l85", "wpn_addon_grenade_launcher_scar", "wpn_addon_grenade_launcher_monolit"},
+}
+
+local UPGR_OUTFIT_BY_TIER = {
+    [1] = {"upgr_o_1_health", "upgr_o_1_bleed", "upgr_o_1_armor"},
+    [2] = {"upgr_o_1_armor", "upgr_o_1_chem", "upgr_o_1_rad", "upgr_o_2_health"},
+    [3] = {"upgr_o_2_armor", "upgr_o_2_bleed", "upgr_o_2_chem", "upgr_o_2_rad"},
+    [4] = {"upgr_o_2_armor", "upgr_o_2_damage", "upgr_o_3_health", "upgr_o_3_bleed"},
+    [5] = {"upgr_o_3_armor", "upgr_o_3_chem", "upgr_o_3_rad", "upgr_o_3_damage", "upgr_o_3_burn"},
+}
+
+-- Kit'ai pagal tier'ą (šviesiai mėlynam stash'ui) (Given kits depending on the tier) (light blue stash)
+local TOOLKITS_BY_TIER = {
+    [1] = {"itm_basickit"},
+    [2] = {"itm_basickit"},
+    [3] = {"itm_basickit", "itm_advancedkit"},
+    [4] = {"itm_advancedkit", "itm_expertkit"},
+    [5] = {"itm_expertkit", "itm_advancedkit"},
+}
+
+-- ============================================================================
+-- PAGALBINĖS FUNKCIJOS (helper functions)
+-- ============================================================================
+
+local function get_current_map()
+    return level and level.name() or "l01_escape"
+end
+
+local function get_map_tier_pool(map_name)
+    local mt = MAP_TIERS[map_name]
+    if mt and mt.pool then
+        return mt.pool
+    end
+    return DEFAULT_MAP_POOL
+end
+
+local function pick_random_tier(map_name)
+    local pool = get_map_tier_pool(map_name)
+    return pool[math.random(#pool)]
+end
+
+local function random_from_table(t)
+    if not t or #t == 0 then return nil end
+    return t[math.random(#t)]
+end
+
+local function section_exists(section)
+    return ini_sys and ini_sys:section_exist(section) or false
+end
+
+-- ============================================================================
+-- STASH GENERAVIMAS (Stash generation)
+-- Stash tipai: (stash types)
+--   is_kit_stash = false  → baltas spot "treasure"          (kas 12-15 questų) (white spot "treasure" - every 12-15 quests)
+--   is_kit_stash = true   → geltonas spot "treasure_searched" (kas 35-40 questų) (yellow spot "treasure_searched" - every 35-40 quests)
+-- ============================================================================
+
+local function build_attachment_content(is_kit_stash)
+    local map = get_current_map()
+    local content = {}
+
+    if is_kit_stash then
+        -- ====================================================
+        -- ŠVIESIAI MĖLYNAS stash (35-40 questų): (light blue stash)
+        --   2-3 scope'ai + 2-3 silencer'iai (2-3 scopres, 2-3 silencers)
+        --   50% šansas gauti granatomėtą (50% chance grenade launcher)
+        --   100% šansas: Cikliškas pagrindinis kit'as (Drug -> Ammo -> Tools) (100% for basic/expert/advanced kit or drug making/ gunsmith)
+        --   1 armor'o upgrade (visada) (armor upgrade kit)
+        -- ====================================================
+        local num_scopes = math.random(2, 3)
+        for i = 1, num_scopes do
+            local tier = pick_random_tier(map)
+            local item = random_from_table(SCOPES_BY_TIER[tier] or SCOPES_BY_TIER[1])
+            if item and section_exists(item) then content[#content+1] = item end
+        end
+
+        local num_sil = math.random(2, 3)
+        for i = 1, num_sil do
+            local tier = pick_random_tier(map)
+            local item = random_from_table(SILENCERS_BY_TIER[tier] or SILENCERS_BY_TIER[1])
+            if item and section_exists(item) then content[#content+1] = item end
+        end
+
+        -- 50% šansas granatomėtui (50% grenade launcher chance)
+        if math.random(100) <= 50 then
+            local tier_gl = pick_random_tier(map)
+            local gl_pool = GRENADE_LAUNCHERS_BY_TIER[tier_gl] or GRENADE_LAUNCHERS_BY_TIER[4]
+            local gl_item = random_from_table(gl_pool)
+            if gl_item and section_exists(gl_item) then content[#content+1] = gl_item end
+        end
+
+
+        local kit_cycle = load_var(db.actor, "qrs_kit_cycle") or 1
+        local kit = nil
+        
+        if kit_cycle == 1 then
+            kit = "itm_drugkit"
+        elseif kit_cycle == 2 then
+            kit = "itm_ammokit"
+        else
+            local tier = pick_random_tier(map)
+            kit = random_from_table(TOOLKITS_BY_TIER[tier] or TOOLKITS_BY_TIER[1])
+        end
+        
+        if kit and section_exists(kit) then 
+            content[#content+1] = kit 
+            
+            kit_cycle = kit_cycle + 1
+            if kit_cycle > 3 then kit_cycle = 1 end
+            save_var(db.actor, "qrs_kit_cycle", kit_cycle)
+        end
+
+        local tier_o = pick_random_tier(map)
+        local upgr_o = random_from_table(UPGR_OUTFIT_BY_TIER[tier_o] or UPGR_OUTFIT_BY_TIER[1])
+        if upgr_o and section_exists(upgr_o) then content[#content+1] = upgr_o end
+
+        local tier_w = pick_random_tier(map)
+        local upgr_w = random_from_table(UPGR_WEAPON_BY_TIER[tier_w] or UPGR_WEAPON_BY_TIER[1])
+        if upgr_w and section_exists(upgr_w) then content[#content+1] = upgr_w end
+
+        local tier_k = pick_random_tier(map)
+        local gun_kit = random_from_table(BAS_KITS_BY_TIER[tier_k] or BAS_KITS_BY_TIER[1])
+        if gun_kit and section_exists(gun_kit) then content[#content+1] = gun_kit end
+
+    else
+        -- ====================================================
+        -- TAMSIAI MĖLYNAS stash (12-15 questų): (Dark blue stash 12-15 quests)
+        --   1-3 scope'ai + 1-2 silencer'iai (pagal tier) (1-3 scopes and 1-2 silencers depending on the tier)
+        --   50% šansas granatomėtui (50% grenade launcher chance)
+        -- ====================================================
+        local num_scopes = math.random(1, 3)
+        for i = 1, num_scopes do
+            local tier = pick_random_tier(map)
+            local item = random_from_table(SCOPES_BY_TIER[tier] or SCOPES_BY_TIER[1])
+            if item and section_exists(item) then content[#content+1] = item end
+        end
+
+        local num_sil = math.random(1, 2)
+        for i = 1, num_sil do
+            local tier = pick_random_tier(map)
+            local item = random_from_table(SILENCERS_BY_TIER[tier] or SILENCERS_BY_TIER[1])
+            if item and section_exists(item) then content[#content+1] = item end
+        end
+
+        -- 50% šansas granatomėtui (50% grenade launcher chance)
+        if math.random(100) <= 50 then
+            local tier_gl = pick_random_tier(map)
+            local gl_pool = GRENADE_LAUNCHERS_BY_TIER[tier_gl] or GRENADE_LAUNCHERS_BY_TIER[4]
+            local gl_item = random_from_table(gl_pool)
+            if gl_item and section_exists(gl_item) then content[#content+1] = gl_item end
+        end
+
+        if math.random(100) <= 50 then
+            local tier_o = pick_random_tier(map)
+            local upgr_o = random_from_table(UPGR_OUTFIT_BY_TIER[tier_o] or UPGR_OUTFIT_BY_TIER[1])
+            if upgr_o and section_exists(upgr_o) then content[#content+1] = upgr_o end
+        end
+
+        if math.random(100) <= 50 then
+            local tier_w = pick_random_tier(map)
+            local upgr_w = random_from_table(UPGR_WEAPON_BY_TIER[tier_w] or UPGR_WEAPON_BY_TIER[1])
+            if upgr_w and section_exists(upgr_w) then content[#content+1] = upgr_w end
+        end
+    end
+
+    return content
+end
+
+local function create_quest_reward_stash(is_kit_stash)
+    local actor = db.actor
+    if not actor then return end
+
+    if not (treasure_manager and treasure_manager.create_random_stash) then
+        printf("[QRS] ERROR: treasure_manager not loaded!")
+        return
+    end
+
+    -- Mūsų attachment'ai bus bonus_items papildomai prie
+    -- standartinio treasure_manager loot'o (maistas, amunicija, dalys ir t.t.)
+    -- TL:DR + extra loot in blue stashes with loot form white stashes
+    local bonus_items = build_attachment_content(is_kit_stash)
+
+    -- Spot tipas (mėlynas) - treasure_manager automatiškai:
+    --   1) suranda laisvą stash dėžę
+    --   2) generuoja įprastą loot'ą pagal žemėlapio tier'ą (iš grok_treasure_manager.ltx)
+    --   3) prideda mūsų bonus_items
+    --   4) uždeda šį spot'ą žemėlapyje
+    --   5) siunčia standartinį treasure pranešimą
+    -- TL:DR Finding the right spot for a stash to spawn basically checking the nearest stash it can generate
+    local spot = is_kit_stash and "quest_reward_stash_rare" or "quest_reward_stash"
+    treasure_manager.create_random_stash(spot, nil, bonus_items, false, false)
+
+    printf("[QRS] Created %s Stash on map=%s with %d bonus attachments",
+        is_kit_stash and "LIGHT-BLUE (kit)" or "DARK-BLUE (attach)",
+        get_current_map(),
+        #bonus_items)
+end
+
+-- ============================================================================
+-- TRADERIŲ PARDAVIMO APRIBOJIMAS
+-- Blokuojame: scope class, silencer class, GL class, weapon/armor upgr parts
+-- Blocking attachments from being sold by traders
+-- ============================================================================
+
+-- Scope'ai pagal frakciją – inject'inami be rep reikalavimo.
+-- Sovietinės frakcijos gaukia T1 Soviet optiką, NATO/Vakarų – T2 optiką.
+-- Scopes by faction – injected without rep requirement.
+-- Soviet factions get T1 Soviet optics; NATO/Western factions get T2 optics.
+local FACTION_SCOPE_INJECT = {
+    -- Sovietinės/Rytų frakcijos – T1 Soviet optika
+    -- Soviet/Eastern factions – T1 Soviet optics
+    ["stalker"]   = {"wpn_addon_scope_pu", "0kp2", "okp", "kobra"},
+    ["trader"]    = {"wpn_addon_scope_pu", "0kp2", "okp", "kobra"}, -- Sidorovich
+    ["csky"]      = {"wpn_addon_scope_pu", "0kp2", "okp", "kobra"},
+    ["bandit"]    = {"0kp2", "kobra"},
+    ["army"]      = {"wpn_addon_scope_pu", "0kp2", "okp", "kobra", "usp1"}, -- Military
+    ["monolith"]  = {"wpn_addon_scope_pu", "0kp2", "kobra"},
+    ["renegade"]  = {"0kp2", "kobra"},
+    -- Duty – drausminga sovietų frakcija, turi ir rakurs
+    -- Duty – disciplined Soviet faction, includes rakurs
+    ["dolg"]      = {"wpn_addon_scope_pu", "0kp2", "okp", "kobra", "rakurs"}, -- Duty
+    -- Vakarų/NATO frakcijos – T2 optika
+    -- Western/NATO factions – T2 optics
+    ["freedom"]   = {"eot", "okp", "rakurs", "ekp8_02", "ekp8_18"},
+    ["killer"]    = {"eot", "okp", "rakurs", "ekp8_02", "ekp8_18", "usp1"}, -- Mercenary
+    ["isg"]       = {"eot", "rakurs", "ekp8_02", "ekp8_18", "usp1"},
+    ["greh"]      = {"eot", "rakurs", "ekp8_02", "ekp8_18"},
+    -- Ekologai – tik bazinis scope
+    -- Ecologists – basic scope only
+    ["ecolog"]    = {"wpn_addon_scope_pu"},
+}
+-- Numatytasis (jei frakcija nežinoma) – T1
+-- Default (unknown faction) – T1
+local FACTION_SCOPE_DEFAULT = {"wpn_addon_scope_pu", "0kp2", "okp", "kobra"}
+
+-- Visi leidžiami scope'ai (union visų frakcijų) – naudojamas is_banned_for_traders filtravimui
+-- Union of all faction scopes – used by is_banned_for_traders filter
+local _trader_scope_allowed = {}
+for _, scopes in pairs(FACTION_SCOPE_INJECT) do
+    for _, s in ipairs(scopes) do _trader_scope_allowed[s] = true end
+end
+for _, s in ipairs(FACTION_SCOPE_DEFAULT) do _trader_scope_allowed[s] = true end
+
+-- Silencer'iai pagal frakciją – inject'inami be rep reikalavimo.
+-- Sovietinės frakcijos – Soviet pistolų silencer'iai.
+-- NATO/Vakarų frakcijos – 9mm ir PBS-1.
+-- Silencers by faction – injected without rep requirement.
+-- Soviet factions – Soviet pistol silencers. NATO/Western – 9mm + PBS-1.
+local FACTION_SILENCER_INJECT = {
+    -- Sovietinės/Rytų frakcijos – Soviet pistolų silencer'iai
+    -- Soviet/Eastern factions – Soviet pistol silencers
+    ["stalker"]   = {"wpn_sil_apb", "wpn_sil_aps", "wpn_sil_pmm", "wpn_sil_sr1m"},
+    ["trader"]    = {"wpn_sil_apb", "wpn_sil_aps", "wpn_sil_pmm", "wpn_sil_sr1m"}, -- Sidorovich
+    ["csky"]      = {"wpn_sil_apb", "wpn_sil_aps", "wpn_sil_pmm"},
+    ["bandit"]    = {"wpn_sil_apb", "wpn_sil_pmm"},
+    ["dolg"]      = {"wpn_sil_apb", "wpn_sil_aps", "wpn_sil_pmm", "wpn_sil_sr1m"}, -- Duty
+    ["army"]      = {"wpn_sil_apb", "wpn_sil_aps", "wpn_sil_pmm", "wpn_sil_sr1m"}, -- Military
+    ["monolith"]  = {"wpn_sil_apb", "wpn_sil_aps", "wpn_sil_pmm"},
+    ["renegade"]  = {"wpn_sil_apb", "wpn_sil_pmm"},
+    -- NATO/Vakarų frakcijos – 9mm ir PBS-1
+    -- NATO/Western factions – 9mm + PBS-1
+    ["freedom"]   = {"wpn_sil_9mm", "wpn_sil_pbs1"},
+    ["killer"]    = {"wpn_sil_9mm", "wpn_sil_pbs1"}, -- Mercenary
+    ["isg"]       = {"wpn_sil_9mm", "wpn_sil_pbs1"},
+    ["greh"]      = {"wpn_sil_9mm", "wpn_sil_pbs1"},
+    -- Ekologai – tik bazinis
+    -- Ecologists – basic only
+    ["ecolog"]    = {"wpn_sil_9mm"},
+}
+-- Numatytasis (jei frakcija nežinoma) – baziniai Soviet
+-- Default (unknown faction) – basic Soviet
+local FACTION_SILENCER_DEFAULT = {"wpn_sil_apb", "wpn_sil_pmm", "wpn_sil_9mm"}
+
+-- Visi leidžiami silencer'iai (union visų frakcijų) – naudojamas is_banned_for_traders
+-- Union of all faction silencers – used by is_banned_for_traders
+local _trader_silencer_allowed = {}
+for _, sils in pairs(FACTION_SILENCER_INJECT) do
+    for _, s in ipairs(sils) do _trader_silencer_allowed[s] = true end
+end
+for _, s in ipairs(FACTION_SILENCER_DEFAULT) do _trader_silencer_allowed[s] = true end
+
+local banned_cache = {}
+
+local function is_banned_for_traders(section)
+    if not section then return false end
+    if banned_cache[section] ~= nil then
+        return banned_cache[section]
+    end
+
+
+    local class = ini_sys and ini_sys:r_string_ex(section, "class")
+
+
+    if class == "II_BIN" then
+        banned_cache[section] = false
+        return false
+    end
+
+    if get_allow_t1_trader() then
+        -- Gauname dabartinio (atidaryto) traderio frakciją
+        -- Get the faction of the currently opened trader
+        local current_faction = _G.QRS_CURRENT_TRADER_FACTION or ""
+        
+        -- Patikriname scope'us pagal šios frakcijos sąrašą
+        local scope_list = FACTION_SCOPE_INJECT[current_faction] or FACTION_SCOPE_DEFAULT
+        for _, s in ipairs(scope_list) do
+            if s == section then
+                banned_cache[section] = false
+                return false
+            end
+        end
+
+        -- Patikriname silencer'ius pagal šios frakcijos sąrašą
+        local sil_list = FACTION_SILENCER_INJECT[current_faction] or FACTION_SILENCER_DEFAULT
+        for _, s in ipairs(sil_list) do
+            if s == section then
+                banned_cache[section] = false
+                return false
+            end
+        end
+    end
+
+
+    if class == "WP_SCOPE" or class == "WP_SILEN" or class == "WP_GLAUN" then
+        banned_cache[section] = true
+        return true
+    end
+
+
+    local kind = ini_sys and ini_sys:r_string_ex(section, "kind")
+    if kind == "w_misc" then
+        -- Ignoruojame bolt ir binokuliarų-tipo daiktus
+        if section ~= "bolt" and section ~= "bolt_bullet" and section ~= "bolt_cop"
+                and (not string.find(section, "binoc", 1, true)) then
+            banned_cache[section] = true
+            return true
+        end
+    end
+
+
+    if string.find(section, "upgr_w_", 1, true) == 1 or string.find(section, "upgr_o_", 1, true) == 1 then
+        banned_cache[section] = true
+        return true
+    end
+
+    -- Banning BAS gun kits from traders
+    if BAS_KITS_BY_TIER then
+        for _, kits in pairs(BAS_KITS_BY_TIER) do
+            for _, k in ipairs(kits) do
+                if k == section then
+                    banned_cache[section] = true
+                    return true
+                end
+            end
+        end
+    end
+
+    banned_cache[section] = false
+    return false
+end
+
+-- Šalina draudžiamus daiktus iš trader'io inventoriaus
+-- Scope'ai ir silencer'iai filtruojami pagal trader'io frakciją:
+-- Kiekvienas traderis turi savo leidžiamų attachment'ų rinkinį.
+-- Removes banned items from trader inventory.
+-- Scopes and silencers are filtered per trader faction:
+-- each trader has its own allowed attachment set.
+local function clean_trader_inventory(trader)
+    if not trader then return end
+
+    local t1_enabled = get_allow_t1_trader()
+    local faction = trader.character_community and trader:character_community() or ""
+
+    -- Sukuriame frakcijos leidžiamų daiktų rinkinius (tik jei T1 opcija įjungta)
+    -- Build faction-specific allowed sets (only when T1 option is on)
+    local faction_scope_set = {}
+    local faction_sil_set = {}
+    if t1_enabled then
+        local scope_list = FACTION_SCOPE_INJECT[faction] or FACTION_SCOPE_DEFAULT
+        for _, s in ipairs(scope_list) do faction_scope_set[s] = true end
+
+        local sil_list = FACTION_SILENCER_INJECT[faction] or FACTION_SILENCER_DEFAULT
+        for _, s in ipairs(sil_list) do faction_sil_set[s] = true end
+    end
+
+    trader:iterate_inventory(function(owner, item)
+        if item then
+            -- Niekada netriname pačių ginklų, šarvų ar šalmų
+            -- Never deleting guns, armors or helmets
+            if not (IsWeapon(item) or IsOutfit(item) or IsHeadgear(item)) then
+                local section = item:section()
+                local class = ini_sys and ini_sys:r_string_ex(section, "class")
+                -- Kadangi `is_banned_for_traders` dabar teisingai apeina leidžiamus BaS ginklus, 
+                -- galime tiesiog naudoti šią funkciją viskam.
+                -- Since `is_banned_for_traders` now correctly allows whitelisted BaS scopes regardless of class,
+                -- we can just use it directly.
+                local remove = is_banned_for_traders(section)
+
+                if remove then
+                    local se_obj = alife_object(item:id())
+                    if se_obj then
+                        alife_release(se_obj)
+                        -- printf("[QRS] Removed %s from %s (%s)", section, owner:name(), faction)
+                    end
+                end
+            end
+        end
+    end, trader)
+end
+
+-- Inject'ina scope'us ir silencer'ius į SUPPLIER tipo traderį be reputacijos reikalavimo.
+-- Scope'ai parenkami pagal trader'io frakciją (Soviet → T1, NATO → T2).
+-- Silencer'iai vienodi visiems (T1 pistoleto silencer'iai).
+-- Injects faction-specific scopes and universal silencers into SUPPLIER traders.
+-- Soviet factions → T1 optics; NATO/Western factions → T2 optics.
+-- Silencers are the same for all (T1 pistol silencers).
+local function inject_attachment_stock(npc)
+    if not get_allow_t1_trader() then 
+        -- news_manager.send_tip(db.actor, "QRS: Failed - T1 disabled", 0, "default", 5000)
+        return false 
+    end
+    if not (trader_autoinject and trader_autoinject.get_trader_type and trader_autoinject.spawn_items) then 
+        -- news_manager.send_tip(db.actor, "QRS: Failed - no trader_autoinject", 0, "default", 5000)
+        return false 
+    end
+
+    local trader_type = trader_autoinject.get_trader_type(npc)
+    if trader_type ~= trader_autoinject.SUPPLIER then 
+        -- news_manager.send_tip(db.actor, "QRS: Failed - type is " .. tostring(trader_type), 0, "default", 5000)
+        return false 
+    end
+
+    local to_spawn = {}
+    local faction = npc.character_community and npc:character_community() or ""
+    local scope_list = FACTION_SCOPE_INJECT[faction] or FACTION_SCOPE_DEFAULT
+    for _, scope in ipairs(scope_list) do
+        if section_exists(scope) then 
+            to_spawn[scope] = 1 
+        end
+    end
+
+    local sil_list = FACTION_SILENCER_INJECT[faction] or FACTION_SILENCER_DEFAULT
+    for _, sil in ipairs(sil_list) do
+        if section_exists(sil) then 
+            to_spawn[sil] = 1 
+        end
+    end
+
+    trader_autoinject.spawn_items(npc, to_spawn, true)
+    return true
+end
+
+-- Track whether we have injected items for a trader during the current restock cycle
+-- This prevents the "infinite item" bug when buying an item and reopening the window.
+local _injected_this_cycle = {}
+
+local function hook_trader_update()
+    -- Išvalome traderio inventorių kai atidaromas UI ir inject'iname scope'us
+    -- Clean trader UI and inject scopes on open
+    RegisterScriptCallback("GUI_on_show", function(name, path)
+        if name ~= "UIInventory" then return end
+
+        local partner = ui_inventory.GUI and ui_inventory.GUI:GetPartner()
+        if not partner then
+            partner = mob_trade.GetTalkingNpc()
+        end
+        if not partner then return end
+
+        local is_trader = false
+        if trader_autoinject and trader_autoinject.get_trader_type then
+            local t_type = trader_autoinject.get_trader_type(partner)
+            if type(t_type) == "number" and t_type >= 0 then
+                is_trader = true
+            end
+        end
+        if not is_trader then
+            if partner.character_community and partner:character_community() == "trader" then
+                is_trader = true
+            elseif partner.name and string.find(partner:name() or "", "trader") then
+                is_trader = true
+            end
+        end
+
+        if is_trader then
+            -- Išsaugome dabartinio traderio frakciją UI filtrui
+            -- Save current trader faction for UI filtering
+            _G.QRS_CURRENT_TRADER_FACTION = partner.character_community and partner:character_community() or ""
+            
+            -- Išvalome cache, kad perskaičiuotų draudimus naujai frakcijai
+            -- Clear cache so bans are recalculated for the new faction
+            banned_cache = {}
+
+            -- Inject vyksta vieną kartą per trader restock ciklą (kad nedingus daiktui nesikurtų naujas).
+            -- Injects once per restock cycle to prevent infinite respawns.
+            local npc_id = partner:id()
+            if not _injected_this_cycle[npc_id] then
+                if inject_attachment_stock(partner) then
+                    _injected_this_cycle[npc_id] = true
+                end
+            end
+
+            clean_trader_inventory(partner)
+
+            CreateTimeEvent("qrs_trader_refresh", "qrs_trader_refresh_ev", 0.1, function()
+                if ui_inventory and ui_inventory.GUI then
+                    ui_inventory.GUI:UpdateInfo(true)
+                    ui_inventory.GUI:TMode_ResetInventories(true)
+                end
+                return true
+            end)
+        end
+    end)
+
+    -- Papildomas valymas ir inject'as kai traderis atnaujina prekes (restock)
+    -- Injection + cleaning on trader restock
+    if trader_autoinject and trader_autoinject.update then
+        local _orig_trader_update = trader_autoinject.update
+        trader_autoinject.update = function(npc)
+            if npc then _injected_this_cycle[npc:id()] = nil end -- Reset cycle
+            _orig_trader_update(npc)
+            inject_attachment_stock(npc)
+            clean_trader_inventory(npc)
+        end
+    end
+end
+
+-- ============================================================================
+-- PAGALBINĖS FUNKCIJOS
+-- Helper functions
+-- ============================================================================
+
+local function get_quest_count()
+    return load_var(db.actor, "qrs_quest_count") or 0
+end
+
+local function set_quest_count(n)
+    save_var(db.actor, "qrs_quest_count", n)
+end
+
+local function safe_random(min, max)
+    if min > max then
+        return math.random(max, min)
+    end
+    return math.random(min, max)
+end
+
+local function get_next_attach_threshold()
+    return load_var(db.actor, "qrs_next_attach") or safe_random(get_quests_attach_min(), get_quests_attach_max())
+end
+
+local function set_next_attach_threshold(n)
+    save_var(db.actor, "qrs_next_attach", n)
+end
+
+local function get_next_kit_threshold()
+    return load_var(db.actor, "qrs_next_kit") or safe_random(get_quests_kit_min(), get_quests_kit_max())
+end
+
+local function set_next_kit_threshold(n)
+    save_var(db.actor, "qrs_next_kit", n)
+end
+
+local function get_last_attach_quest()
+    return load_var(db.actor, "qrs_last_attach") or 0
+end
+
+local function set_last_attach_quest(n)
+    save_var(db.actor, "qrs_last_attach", n)
+end
+
+local function get_last_kit_quest()
+    return load_var(db.actor, "qrs_last_kit") or 0
+end
+
+local function set_last_kit_quest(n)
+    save_var(db.actor, "qrs_last_kit", n)
+end
+
+-- ============================================================================
+-- QUEST CALLBACK - iškviečiama kai žaidėjas baigia quest'ą
+-- Quest callback when a player ends a quest
+-- ============================================================================
+
+local function on_quest_done()
+    if not db.actor then return false end
+    local stash_triggered = false
+    
+    local count = get_quest_count() + 1
+    set_quest_count(count)
+
+
+    local last_attach   = get_last_attach_quest()
+    local thresh_attach = get_next_attach_threshold()
+    if (count - last_attach) >= thresh_attach then
+        if math.random(100) <= 80 then
+            set_last_attach_quest(count)
+            set_next_attach_threshold(safe_random(get_quests_attach_min(), get_quests_attach_max()))
+            stash_triggered = true
+            CreateTimeEvent("qrs_spawn_attach", "qrs_spawn_attach_delay", 1.5, function()
+                create_quest_reward_stash(false)
+                return true
+            end)
+        else
+            printf("[QRS] Dark-blue stash rolled miss (20%% chance). Will retry on the next quest completion.")
+        end
+    end
+
+
+    local last_kit   = get_last_kit_quest()
+    local thresh_kit = get_next_kit_threshold()
+    if (count - last_kit) >= thresh_kit then
+        set_last_kit_quest(count)
+        set_next_kit_threshold(safe_random(get_quests_kit_min(), get_quests_kit_max()))
+        stash_triggered = true
+        CreateTimeEvent("qrs_spawn_kit", "qrs_spawn_kit_delay", 3.0, function()
+            create_quest_reward_stash(true)
+            return true
+        end)
+    end
+
+    return stash_triggered
+end
+
+-- ============================================================================
+-- STASH SPOT VALYMAS KAI STASH IŠTUŠTĖJA
+-- Clearing stash spot if its empty
+-- ============================================================================
+
+local QRS_SPOTS = {"quest_reward_stash", "quest_reward_stash_rare"}
+
+local function actor_on_item_take_from_box(box, item)
+    if not box then return end
+    local id = box:id()
+
+    -- Tikriname ar tai mūsų stash'as
+    -- Checking if its our stash
+    local our_spot = nil
+    for _, spot in ipairs(QRS_SPOTS) do
+        if level.map_has_object_spot(id, spot) > 0 then
+            our_spot = spot
+            break
+        end
+    end
+    if not our_spot then return end
+
+    -- Tikriname ar dėžė tuščia
+    local is_empty = true
+    box:iterate_inventory(function(owner, obj)
+        is_empty = false
+    end)
+
+    if is_empty then
+        level.map_remove_object_spot(id, our_spot)
+        printf("[QRS] Stash ID=%d is empty. Spot (%s) removed.", id, our_spot)
+    end
+end
+
+-- ============================================================================
+-- CORPSE LOOTING (Mėlyni stash'ai iš lavonų)
+-- Corpse looting getting blue stashes from dead bodies
+-- ============================================================================
+local _used_corpses = {}
+
+local function npc_on_use(npc)
+    if not npc or npc:alive() then return end
+    if character_community(npc) == "zombied" then return end
+    local npc_id = npc:id()
+    if _used_corpses[npc_id] then return end
+    _used_corpses[npc_id] = true
+
+    local rank = ranks.get_obj_rank_name(npc)
+    local chance = 0
+
+    if rank == "novice" or rank == "trainee" or rank == "experienced" then
+        chance = 0.0002 -- 0.02%
+    elseif rank == "professional" or rank == "veteran" then
+        chance = 0.01 -- 1.0%
+    elseif rank == "expert" or rank == "master" or rank == "legend" then
+        chance = 0.02 -- 2.0%
+    end
+
+    if math.random() <= chance then
+        if math.random() <= 0.8 then
+            create_quest_reward_stash(false) -- 80% tamsiai mėlynas
+        else
+            create_quest_reward_stash(true)  -- 20% šviesiai mėlynas
+        end
+    end
+end
+
+local function server_entity_on_unregister(se_npc, kind)
+    if kind == "se_stalker" and _used_corpses[se_npc.id] then
+        _used_corpses[se_npc.id] = nil
+    end
+end
+
+local function save_state(m)
+    m.qrs_corpses = _used_corpses
+end
+
+local function load_state(m)
+    _used_corpses = m.qrs_corpses or {}
+end
+
+-- ============================================================================
+-- INICIALIZACIJA IR MCM
+-- Initialization and mcm
+-- ============================================================================
+
+
+
+-- ====== Testing commands for console ======
+_G.qrs_test_attach = function() create_quest_reward_stash(false) end
+_G.qrs_test_kit = function() create_quest_reward_stash(true) end
+_G.qrs_test_state = function()
+    printf("--- QRS STATE ---")
+    printf("Total Quests: %d", get_quest_count())
+    printf("Last Attach: %d (Target: +%d)", get_last_attach_quest(), get_next_attach_threshold())
+    printf("Last Kit: %d (Target: +%d)", get_last_kit_quest(), get_next_kit_threshold())
+end
+_G.qrs_test_quest = function(amount)
+    local amt = tonumber(amount) or 1
+    for i = 1, amt do
+        local stash_triggered = on_quest_done()
+        if stash_triggered then
+            printf("[QRS] Blue stash triggered during simulation!")
+        end
+    end
+    printf("[QRS] Simulated %d quests. Current total: %d", amt, get_quest_count())
+end
+_G.qrs_reset_thresholds = function()
+    -- Ištrina išsaugotus threshold'us, kad naujame žaidime/įkrovus imtų default'us
+    -- Deletes saved thresholds so new defaults take effect on next load
+    if not db.actor then
+        printf("[QRS] ERROR: No actor found. Load a save first.")
+        return
+    end
+    save_var(db.actor, "qrs_next_attach", nil)
+    save_var(db.actor, "qrs_next_kit",    nil)
+    printf("[QRS] Thresholds reset! New values will apply immediately.")
+    printf("[QRS]   Attach: next in %d quests", get_next_attach_threshold())
+    printf("[QRS]   Kit:    next in %d quests", get_next_kit_threshold())
+end
+local function on_option_change()
+    banned_cache = {}
+    
+    if db.actor then
+        local min_a = get_quests_attach_min()
+        local max_a = get_quests_attach_max()
+        if min_a > max_a then min_a, max_a = max_a, min_a end
+        
+        local thresh_attach = get_next_attach_threshold()
+        if thresh_attach < min_a or thresh_attach > max_a then
+            set_next_attach_threshold(safe_random(min_a, max_a))
+        end
+
+        local min_k = get_quests_kit_min()
+        local max_k = get_quests_kit_max()
+        if min_k > max_k then min_k, max_k = max_k, min_k end
+        
+        local thresh_kit = get_next_kit_threshold()
+        if thresh_kit < min_k or thresh_kit > max_k then
+            set_next_kit_threshold(safe_random(min_k, max_k))
+        end
+    end
+end
+
+-- ==========================================================
+
+function on_game_start()
+    RegisterScriptCallback("actor_on_item_take_from_box", actor_on_item_take_from_box)
+    RegisterScriptCallback("npc_on_use", npc_on_use)
+    RegisterScriptCallback("server_entity_on_unregister", server_entity_on_unregister)
+    RegisterScriptCallback("save_state", save_state)
+    RegisterScriptCallback("load_state", load_state)
+    RegisterScriptCallback("on_option_change", on_option_change)
+    hook_trader_update()
+
+    -- Hook into xr_effects.reward_stash
+    -- This guarantees we only count quests that ACTUALLY try to give a stash reward
+    -- and we can block them synchronously without race conditions.
+    RegisterScriptCallback("on_game_load", function()
+        if not (xr_effects and xr_effects.reward_stash) then return end
+        
+        local _orig_reward = xr_effects.reward_stash
+        xr_effects.reward_stash = function(actor, npc, p)
+            local stash_triggered = on_quest_done()
+            
+            if stash_triggered and get_replace_quest_stash() then
+                printf("[QRS] Blocked default quest reward stash because blue stash was triggered!")
+                return
+            end
+            
+            return _orig_reward(actor, npc, p)
+        end
+        printf("[QRS] xr_effects.reward_stash monkey-patched OK!")
+    end)
+
+    printf("[QRS] Quest Reward Stash v%s loaded and active!", QRS_VERSION)
+end

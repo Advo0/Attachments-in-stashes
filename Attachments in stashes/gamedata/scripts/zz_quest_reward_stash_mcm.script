@@ -1,0 +1,23 @@
+-- ============================================================================
+-- MCM NUSTATYMAI ATTACHMENTS IN STASHES MODIFIKACIJAI
+-- MCM settings for attachments in stashes mod
+-- ============================================================================
+
+function on_mcm_load()
+    return {
+        id = "qrs", sh = true, gr = {
+            { id = "title", type = "slide", link = "ui_options_slider_player", text = "ui_mcm_qrs_title", size = {512,50}, spacing = 20 },
+            
+            { id = "trader_t1", type = "check", val = 1, def = false },
+            { id = "replace_quest_stash", type = "check", val = 1, def = true },
+            
+            { id = "desc_attach", type = "desc", text = "ui_mcm_qrs_desc_attach" },
+            { id = "attach_min", type = "track", val = 2, min = 3, max = 30, step = 1, def = 10 },
+            { id = "attach_max", type = "track", val = 2, min = 3, max = 30, step = 1, def = 12 },
+            
+            { id = "desc_kit", type = "desc", text = "ui_mcm_qrs_desc_kit" },
+            { id = "kit_min", type = "track", val = 2, min = 5, max = 60, step = 1, def = 20 },
+            { id = "kit_max", type = "track", val = 2, min = 5, max = 60, step = 1, def = 25 },
+        }
+    }
+end
