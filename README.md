@@ -1,4 +1,4 @@
-# Attachments in Stashes Mod v1.2.2
+# Attachments in Stashes Mod v1.3.0
 ### S.T.A.L.K.E.R. GAMMA / Anomaly addon
 
 ---
@@ -75,6 +75,9 @@
 ---
 
 ## Changelog
+
+### 1.3.0 (2026-06-23)
+- **NEW**: Faction-specific T1 weapon upgrade kits injection! Now when T1 attachments are allowed at traders, they will also sell basic pistol/gun kits depending on their faction (e.g. Duty gets PM, PB, PL-15, SR1MP kits; Mercenaries get Mod9, M9, Tikka kits).
 
 ### v1.2.2
 - **FIXED**: Improved trader UI detection hook by utilizing `trader_autoinject.get_trader_type()`. Faction traders like Petrenko or Dushman will now instantly have their inventories cleaned upon opening the trade window, resolving the bug where disabled items lingered until their next restock cycle.
