@@ -16,7 +16,7 @@
 ================================================================================
 --]]
 
-local QRS_VERSION = "1.3.0"
+local QRS_VERSION = "1.3.1"
 
 -- ============================================================================
 -- NUSTATYMŲ KONFIGŪRACIJA (settings) (Naudoja MCM jei įdiegta) (if MCM present)
@@ -356,9 +356,8 @@ local FACTION_SCOPE_INJECT = {
     ["killer"]    = {"eot", "okp", "rakurs", "ekp8_02", "ekp8_18", "usp1"}, -- Mercenary
     ["isg"]       = {"eot", "rakurs", "ekp8_02", "ekp8_18", "usp1"},
     ["greh"]      = {"eot", "rakurs", "ekp8_02", "ekp8_18"},
-    -- Ekologai – tik bazinis scope
-    -- Ecologists – basic scope only
-    ["ecolog"]    = {"wpn_addon_scope_pu"},
+    -- Ekologams viską draudžiame (Ecologists banned from everything)
+    ["ecolog"]    = {},
 }
 -- Numatytasis (jei frakcija nežinoma) – T1
 -- Default (unknown faction) – T1
@@ -394,9 +393,8 @@ local FACTION_SILENCER_INJECT = {
     ["killer"]    = {"wpn_sil_9mm", "wpn_sil_pbs1"}, -- Mercenary
     ["isg"]       = {"wpn_sil_9mm", "wpn_sil_pbs1"},
     ["greh"]      = {"wpn_sil_9mm", "wpn_sil_pbs1"},
-    -- Ekologai – tik bazinis
-    -- Ecologists – basic only
-    ["ecolog"]    = {"wpn_sil_9mm"},
+    -- Ekologams viską draudžiame
+    ["ecolog"]    = {},
 }
 -- Numatytasis (jei frakcija nežinoma) – baziniai Soviet
 -- Default (unknown faction) – basic Soviet
@@ -421,8 +419,8 @@ local FACTION_KIT_INJECT = {
     ["isg"]       = {"mod9", "m9_upgr_kit", "5c_tik"},
     ["greh"]      = {"mod9", "m9_upgr_kit"},
     
-    -- Ecolog
-    ["ecolog"]    = {"pm_upgr_kit", "pb_upgr_kit"},
+    -- Ecologams viską draudžiame
+    ["ecolog"]    = {},
 }
 local FACTION_KIT_DEFAULT = {"pm_upgr_kit", "pb_upgr_kit", "tt_upgr_kit"}
 
@@ -433,6 +431,12 @@ for _, sils in pairs(FACTION_SILENCER_INJECT) do
     for _, s in ipairs(sils) do _trader_silencer_allowed[s] = true end
 end
 for _, s in ipairs(FACTION_SILENCER_DEFAULT) do _trader_silencer_allowed[s] = true end
+
+local _trader_kit_allowed = {}
+for _, kits in pairs(FACTION_KIT_INJECT) do
+    for _, k in ipairs(kits) do _trader_kit_allowed[k] = true end
+end
+for _, k in ipairs(FACTION_KIT_DEFAULT) do _trader_kit_allowed[k] = true end
 
 local banned_cache = {}
 
@@ -451,7 +455,7 @@ local function is_banned_for_traders(section)
         return false
     end
 
-    if get_allow_t1_trader() then
+    if get_allow_t1_trader() and _G.QRS_CURRENT_TRADER_FACTION ~= "BLACKLISTED" then
         -- Gauname dabartinio (atidaryto) traderio frakciją
         -- Get the faction of the currently opened trader
         local current_faction = _G.QRS_CURRENT_TRADER_FACTION or ""
@@ -547,29 +551,78 @@ local function clean_trader_inventory(trader)
         for _, s in ipairs(sil_list) do faction_sil_set[s] = true end
     end
 
+    local seen_items = {}
     trader:iterate_inventory(function(owner, item)
         if item then
             -- Niekada netriname pačių ginklų, šarvų ar šalmų
             -- Never deleting guns, armors or helmets
             if not (IsWeapon(item) or IsOutfit(item) or IsHeadgear(item)) then
                 local section = item:section()
-                local class = ini_sys and ini_sys:r_string_ex(section, "class")
-                -- Kadangi `is_banned_for_traders` dabar teisingai apeina leidžiamus BaS ginklus, 
-                -- galime tiesiog naudoti šią funkciją viskam.
-                -- Since `is_banned_for_traders` now correctly allows whitelisted BaS scopes regardless of class,
-                -- we can just use it directly.
                 local remove = is_banned_for_traders(section)
 
                 if remove then
                     local se_obj = alife_object(item:id())
                     if se_obj then
                         alife_release(se_obj)
-                        -- printf("[QRS] Removed %s from %s (%s)", section, owner:name(), faction)
+                    end
+                else
+                    -- Jei daiktas leidžiamas, bet tai yra mūsų mod'o attachment'as/kit'as
+                    -- užtikriname, kad prekeivis turėtų TIK VIENĄ jo kopiją.
+                    -- Jei randame dublikatą - ištriname.
+                    if _trader_scope_allowed[section] or _trader_silencer_allowed[section] or _trader_kit_allowed[section] then
+                        if seen_items[section] then
+                            local se_obj = alife_object(item:id())
+                            if se_obj then
+                                alife_release(se_obj)
+                            end
+                        else
+                            seen_items[section] = true
+                        end
                     end
                 end
             end
         end
     end, trader)
+end
+
+local TRADER_WHITELIST = {
+    "esc_m_trader",                       -- Sidorovich (Cordon)
+    "esc_main_base_trader_mlr",           -- Loris (Cordon Farm)
+    "loris",                              -- Loris (fallback)
+    "mar_smart_terrain_base_trader",      -- Spore (Swamps)
+    "val_smart_terrain_7_4_bandit_trader",-- Olivius (Dark Valley)
+    "bar_dolg_general_petrenko",          -- Petrenko (Rostok)
+    "mil_smart_terrain_7_10_freedom_trader", -- Skinflint (Army Warehouses)
+    "cit_killers_merc_trader",            -- Dushman (Dead City)
+    "zat_b30_owl",                        -- Owl (Zaton)
+    "ashot",                              -- Ashot (Jupiter / Freedom)
+    "agr_smart_terrain_1_6_army_trader",  -- Librarian (Agroprom)
+    "pri_b36_monolith_trader",            -- Rabbit (Pripyat)
+    "pri_a15_actor_trader",               -- Spooner (Pripyat Outskirts)
+    "pri_a18",                            -- Meeker (Merc, Pripyat Outskirts)
+    "jup_depo_isg_trader",                -- ISG (Jupiter)
+    "red_smart_terrain_3_2_greh_trader",  -- Sin (Red Forest)
+    "renegade_trader",                    -- Renegade
+}
+
+local function is_valid_main_trader(npc)
+    if not npc then return false end
+    
+    local name = npc:name()
+    if not name then return false end
+    local lower_name = string.lower(name)
+    
+    local char_name = npc:character_name() and string.lower(npc:character_name()) or ""
+    
+    -- Griežtas WHITELIST patikrinimas: leidžiame tik išvardintus pagrindinius prekeivius
+    -- Strict WHITELIST check: allow ONLY the explicitly listed main traders
+    for _, w in ipairs(TRADER_WHITELIST) do
+        if string.find(lower_name, w) or string.find(char_name, w) then
+            return true
+        end
+    end
+    
+    return false
 end
 
 -- Inject'ina scope'us ir silencer'ius į SUPPLIER tipo traderį be reputacijos reikalavimo.
@@ -594,30 +647,50 @@ local function inject_attachment_stock(npc)
         return false 
     end
 
+    -- Užblokuojame nepagrindinius traderius (pvz. Butcher) (Block non-main traders like Butcher)
+    if not is_valid_main_trader(npc) then
+        return false
+    end
+
+    -- Surenkame, ką prekeivis jau turi, kad išvengtume dublikatų
+    -- Collect what the trader already has to prevent duplicates
+    local current_items = {}
+    npc:iterate_inventory(function(owner, item)
+        if item then
+            current_items[item:section()] = true
+        end
+    end, npc)
+
     local to_spawn = {}
     local faction = npc.character_community and npc:character_community() or ""
     local scope_list = FACTION_SCOPE_INJECT[faction] or FACTION_SCOPE_DEFAULT
     for _, scope in ipairs(scope_list) do
-        if section_exists(scope) then 
+        if section_exists(scope) and not current_items[scope] then 
             to_spawn[scope] = 1 
         end
     end
 
     local sil_list = FACTION_SILENCER_INJECT[faction] or FACTION_SILENCER_DEFAULT
     for _, sil in ipairs(sil_list) do
-        if section_exists(sil) then 
+        if section_exists(sil) and not current_items[sil] then 
             to_spawn[sil] = 1 
         end
     end
 
     local kit_list = FACTION_KIT_INJECT[faction] or FACTION_KIT_DEFAULT
     for _, kit in ipairs(kit_list) do
-        if section_exists(kit) then 
+        if section_exists(kit) and not current_items[kit] then 
             to_spawn[kit] = 1 
         end
     end
 
-    trader_autoinject.spawn_items(npc, to_spawn, true)
+    -- Jei nėra ką naujo pridėti, nekviečiame spawn_items
+    local has_any = false
+    for k,v in pairs(to_spawn) do has_any = true break end
+    
+    if has_any then
+        trader_autoinject.spawn_items(npc, to_spawn, true)
+    end
     return true
 end
 
@@ -655,7 +728,11 @@ local function hook_trader_update()
         if is_trader then
             -- Išsaugome dabartinio traderio frakciją UI filtrui
             -- Save current trader faction for UI filtering
-            _G.QRS_CURRENT_TRADER_FACTION = partner.character_community and partner:character_community() or ""
+            if is_valid_main_trader(partner) then
+                _G.QRS_CURRENT_TRADER_FACTION = partner.character_community and partner:character_community() or ""
+            else
+                _G.QRS_CURRENT_TRADER_FACTION = "BLACKLISTED"
+            end
             
             -- Išvalome cache, kad perskaičiuotų draudimus naujai frakcijai
             -- Clear cache so bans are recalculated for the new faction
