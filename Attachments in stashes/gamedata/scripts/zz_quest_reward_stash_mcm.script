@@ -18,6 +18,14 @@ function on_mcm_load()
             { id = "desc_kit", type = "desc", text = "ui_mcm_qrs_desc_kit" },
             { id = "kit_min", type = "track", val = 2, min = 5, max = 60, step = 1, def = 20 },
             { id = "kit_max", type = "track", val = 2, min = 5, max = 60, step = 1, def = 25 },
+            
+            { id = "desc_corpse", type = "desc", text = "ui_mcm_qrs_desc_corpse" },
+            { id = "corpse_novice", type = "track", val = 2, min = 0, max = 100, step = 1, def = 1 },
+            { id = "corpse_veteran", type = "track", val = 2, min = 0, max = 100, step = 1, def = 3 },
+            { id = "corpse_expert", type = "track", val = 2, min = 0, max = 100, step = 1, def = 5 },
+            
+            { id = "desc_pda", type = "desc", text = "ui_mcm_qrs_desc_pda" },
+            { id = "pda_chance", type = "track", val = 2, min = 0, max = 100, step = 1, def = 3 },
         }
     }
 end
