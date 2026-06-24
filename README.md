@@ -1,4 +1,4 @@
-# Attachments in Stashes Mod v1.4.0
+# Attachments in Stashes Mod v1.4.1
 ### S.T.A.L.K.E.R. GAMMA / Anomaly addon
 
 ---
@@ -76,6 +76,9 @@
 ---
 
 ## Changelog
+
+### 1.4.1
+- **STABILITY**: Added protection against companion inventory corruption. The mod will now skip inventory cleaning if the trader is identified as a companion.
 
 ### 1.4.0
 - **ECONOMY OVERHAUL**: Reduced the base cost (selling price) of all mid-to-high tier scopes, silencers, and kits by exactly 4x. This prevents the player from becoming unreasonably wealthy from selling stash loot in the mid-to-late game. The low-tier (T1) items sold by specific traders retain their original prices.
