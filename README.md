@@ -1,4 +1,4 @@
-# Attachments in Stashes Mod v1.4.1
+# Attachments in Stashes Mod v1.4.2
 ### S.T.A.L.K.E.R. GAMMA / Anomaly addon
 
 ---
@@ -43,8 +43,11 @@
 
 ---
 
-### 4. Enemy Corpse Looting
-- There is a very small chance (0.02% to 2% depending on rank) to find these blue stash coordinates directly from looting enemy corpses.
+### 4. Enemy Corpse Looting & PDAs
+- **Looting**: You have a customizable chance (1-5% by default based on rank) to discover blue stash coordinates directly when looting enemy corpses.
+- **PDAs**: You have a universal customizable chance (3% by default) to extract blue stash coordinates when viewing a decrypted/unlocked PDA in your inventory.
+- **Exploit Protection**: The PDA extraction rolls exactly once per physical PDA item to prevent spamming.
+- All chances are fully configurable via the **MCM Menu**.
 
 ---
 
@@ -76,6 +79,12 @@
 ---
 
 ## Changelog
+
+### 1.4.2
+- **NEW**: Added a chance to discover blue stash coordinates directly from extracting data from decrypted/unlocked PDAs in your inventory.
+- **NEW**: Full MCM integration for customizing drop rates from both Dead Stalkers (based on their rank) and PDAs.
+- **IMPROVED**: The corpse looting mechanic now properly scales drop chances based on enemy rank (Rookie/Novice to Expert/Legend) and is fully adjustable via MCM.
+- **ANTI-EXPLOIT**: PDA stash extraction rolls exactly once per physical PDA item. Spamming the "View" button or clicking on locked PDAs will not grant extra chances or waste your roll.
 
 ### 1.4.1
 - **STABILITY**: Added protection against companion inventory corruption. The mod will now skip inventory cleaning if the trader is identified as a companion.
