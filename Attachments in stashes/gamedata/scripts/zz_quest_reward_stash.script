@@ -16,7 +16,7 @@
 ================================================================================
 --]]
 
-local QRS_VERSION = "1.4.0"
+local QRS_VERSION = "1.4.1"
 
 -- ============================================================================
 -- NUSTATYMŲ KONFIGŪRACIJA (settings) (Naudoja MCM jei įdiegta) (if MCM present)
@@ -732,6 +732,9 @@ local function hook_trader_update()
             partner = mob_trade.GetTalkingNpc()
         end
         if not partner then return end
+
+        -- Skip cleaning if the partner is a companion
+        if partner.has_info and partner:has_info("npcx_is_companion") then return end
 
         local is_trader = false
         if trader_autoinject and trader_autoinject.get_trader_type then
