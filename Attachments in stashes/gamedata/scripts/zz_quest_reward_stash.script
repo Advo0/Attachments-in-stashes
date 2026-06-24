@@ -16,7 +16,7 @@
 ================================================================================
 --]]
 
-local QRS_VERSION = "1.4.1"
+local QRS_VERSION = "1.4.2"
 
 -- ============================================================================
 -- NUSTATYMŲ KONFIGŪRACIJA (settings) (Naudoja MCM jei įdiegta) (if MCM present)
@@ -35,6 +35,11 @@ local function get_quests_kit_min()    return get_config("kit_min", 20) end
 local function get_quests_kit_max()    return get_config("kit_max", 25) end
 local function get_allow_t1_trader()   return get_config("trader_t1", false) end
 local function get_replace_quest_stash() return get_config("replace_quest_stash", true) end
+
+local function get_corpse_chance_novice()  return get_config("corpse_novice", 1) / 100 end
+local function get_corpse_chance_veteran() return get_config("corpse_veteran", 3) / 100 end
+local function get_corpse_chance_expert()  return get_config("corpse_expert", 5) / 100 end
+local function get_pda_chance()            return get_config("pda_chance", 3) / 100 end
 
 _G.QRS_BLOCK_NEXT_STASH = false
 
@@ -945,12 +950,12 @@ local function npc_on_use(npc)
     local rank = ranks.get_obj_rank_name(npc)
     local chance = 0
 
-    if rank == "novice" or rank == "trainee" or rank == "experienced" then
-        chance = 0.0002 -- 0.02%
+    if rank == "rookie" or rank == "novice" or rank == "trainee" or rank == "experienced" then
+        chance = get_corpse_chance_novice()
     elseif rank == "professional" or rank == "veteran" then
-        chance = 0.01 -- 1.0%
+        chance = get_corpse_chance_veteran()
     elseif rank == "expert" or rank == "master" or rank == "legend" then
-        chance = 0.02 -- 2.0%
+        chance = get_corpse_chance_expert()
     end
 
     if math.random() <= chance then
@@ -1015,6 +1020,8 @@ _G.qrs_reset_thresholds = function()
     printf("[QRS]   Attach: next in %d quests", get_next_attach_threshold())
     printf("[QRS]   Kit:    next in %d quests", get_next_kit_threshold())
 end
+-- PDA stash mechanizmas perkeltas į treasure_manager hook'ą
+
 local function on_option_change()
     banned_cache = {}
     
@@ -1050,9 +1057,6 @@ function on_game_start()
     RegisterScriptCallback("on_option_change", on_option_change)
     hook_trader_update()
 
-    -- Hook into xr_effects.reward_stash
-    -- This guarantees we only count quests that ACTUALLY try to give a stash reward
-    -- and we can block them synchronously without race conditions.
     RegisterScriptCallback("on_game_load", function()
         if not (xr_effects and xr_effects.reward_stash) then return end
         
@@ -1068,6 +1072,55 @@ function on_game_start()
             return _orig_reward(actor, npc, p)
         end
         printf("[QRS] xr_effects.reward_stash monkey-patched OK!")
+        
+        -- HOOK INTO PDA READING FOR INDEPENDENT BLUE STASH CHANCE
+        if ui_pda_npc_tab and ui_pda_npc_tab.use_view then
+            local _orig_use_view = ui_pda_npc_tab.use_view
+            ui_pda_npc_tab.use_view = function(obj)
+                local ret = _orig_use_view(obj)
+                
+                if not obj then return ret end
+                
+                local pda_id = obj:id()
+                if not pda_id then return ret end
+                
+                -- Jei PDA užrakintas (encrypted), nieko neduodame (laukiam kol atrakins)
+                if se_load_var then
+                    local info = se_load_var(pda_id, obj:name(), "info")
+                    if info and info.state == "encrypted" then
+                        return ret
+                    end
+                end
+                
+                -- Patikriname, ar šis konkretus PDA jau buvo perskaitytas mūsų modifikacijos
+                local save_key = "qrs_pda_" .. tostring(pda_id)
+                if load_var(db.actor, save_key) then
+                    return ret
+                end
+                
+                -- Pažymime, kad šis PDA jau patikrintas
+                save_var(db.actor, save_key, true)
+                
+                local pda_sec = obj:section()
+                local chance = 0
+                if pda_sec == "itm_pda_common" or pda_sec == "itm_pda_uncommon" or pda_sec == "itm_pda_rare" then
+                    chance = get_pda_chance()
+                end
+                
+                if chance > 0 then
+                    if math.random() <= chance then
+                        if math.random() <= 0.8 then
+                            create_quest_reward_stash(false)
+                        else
+                            create_quest_reward_stash(true)
+                        end
+                    end
+                end
+                
+                return ret
+            end
+            printf("[QRS] ui_pda_npc_tab.use_view monkey-patched OK!")
+        end
     end)
 
     printf("[QRS] Quest Reward Stash v%s loaded and active!", QRS_VERSION)
