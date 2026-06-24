@@ -22,7 +22,7 @@
     </string>
 
     <string id="ui_mcm_qrs_desc_attach">
-        <text>--- DARK BLUE STASH (Attachments + White stash loot) ---</text>
+        <text>--- DARK BLUE STASH ---</text>
     </string>
     <string id="ui_mcm_qrs_attach_min">
         <text>Dark Blue Stash: Min Quests</text>
@@ -39,7 +39,7 @@
     </string>
 
     <string id="ui_mcm_qrs_desc_kit">
-        <text>--- LIGHT BLUE STASH (Toolkits + Attachments) ---</text>
+        <text>--- LIGHT BLUE STASH ---</text>
     </string>
     <string id="ui_mcm_qrs_kit_min">
         <text>Light Blue Stash: Min Quests</text>
@@ -53,5 +53,39 @@
     </string>
     <string id="ui_mcm_qrs_kit_max_desc">
         <text>Maximum number of quests required to trigger the Light Blue (kits + attachments) stash.</text>
+    </string>
+
+    <string id="ui_mcm_qrs_desc_corpse">
+        <text>--- BLUE STASH FROM DEAD STALKERS ---</text>
+    </string>
+    <string id="ui_mcm_qrs_corpse_novice">
+        <text>Chance to get a blue stash from Rookie/Novice/Trainee stalker (%)</text>
+    </string>
+    <string id="ui_mcm_qrs_corpse_novice_desc">
+        <text>Chance to get a blue stash when looting Rookie, Novice, Trainee or Experienced stalkers.</text>
+    </string>
+    
+    <string id="ui_mcm_qrs_corpse_veteran">
+        <text>Chance to get a blue stash from Veteran/Professional stalker (%)</text>
+    </string>
+    <string id="ui_mcm_qrs_corpse_veteran_desc">
+        <text>Chance to get a blue stash when looting Veteran or Professional stalkers.</text>
+    </string>
+    
+    <string id="ui_mcm_qrs_corpse_expert">
+        <text>Chance to get a blue stash from Expert/Master/Legend stalker (%)</text>
+    </string>
+    <string id="ui_mcm_qrs_corpse_expert_desc">
+        <text>Chance to get a blue stash when looting Expert, Master or Legend stalkers.</text>
+    </string>
+
+    <string id="ui_mcm_qrs_desc_pda">
+        <text>--- BLUE STASH FROM PDA ---</text>
+    </string>
+    <string id="ui_mcm_qrs_pda_chance">
+        <text>Chance to get a blue stash from a PDA (%)</text>
+    </string>
+    <string id="ui_mcm_qrs_pda_chance_desc">
+        <text>Chance to get a blue stash when reading an unlocked PDA.</text>
     </string>
 </string_table>
