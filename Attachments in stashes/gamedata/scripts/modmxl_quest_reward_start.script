@@ -1,7 +1,7 @@
 -- modmxl_quest_reward_start.script
 -- DXML patch: prideda du "quest_reward_stash" map spot tipus į map_spots.xml, bet neperrašant viso failo (Map spots into map_spots.xml file without override)
--- quest_reward_stash      = TAMSIAI MĖLYNAS (Dark Blue) (attachment stash, kas 12-15 questų) (TL:DR every 12-15 quests)
--- quest_reward_stash_rare = ŠVIESIAI MĖLYNAS (Light Blue) (kit stash, kas 35-40 questų) (TL:DR every 35-40 quests)
+-- quest_reward_stash      = TAMSIAI MĖLYNAS (Dark Blue) (attachment stash, kas 10-12 questų) (TL:DR every 10-12 quests)
+-- quest_reward_stash_rare = ŠVIESIAI MĖLYNAS (Light Blue) (kit stash, kas 20-25 questų) (TL:DR every 20-25 quests)
 
 local SPOT_XML = [[
     <!-- QRS: Attachment stash - TAMSIAI MĖLYNAS (Dark Blue) -->
